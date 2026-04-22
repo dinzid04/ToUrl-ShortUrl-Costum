@@ -35,16 +35,7 @@ if (fs.existsSync(configPath)) {
   }
 }
 
-const REDIRECT_FILE = path.join(process.cwd(), 'redirects.json');
-let localRedirects: Record<string, string> = {};
-if (fs.existsSync(REDIRECT_FILE)) {
-  try { localRedirects = JSON.parse(fs.readFileSync(REDIRECT_FILE, 'utf-8')); } catch {}
-}
 
-const saveLocalRedirect = (code: string, url: string) => {
-  localRedirects[code] = url;
-  fs.writeFileSync(REDIRECT_FILE, JSON.stringify(localRedirects, null, 2));
-};
 
 const makeid = (length: number) => {
   let result = '';
@@ -57,23 +48,17 @@ const makeid = (length: number) => {
 
 const shorten = async (originalUrl: string) => {
   const code = makeid(7);
-  // Default to internal masking if it's a GDrive proxy
-  if (originalUrl.includes('/api/drive/stream/')) {
-    saveLocalRedirect(code, originalUrl);
-    const appUrl = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
-    return `${appUrl}/${code}`;
-  }
 
-  // Fallback to external shortener if configured
+  // Use external shortener for ALL URLs including Google Drive proxy, because serverless
+  // platforms (Vercel/Netlify) do not persist local JS objects or local files.
   try {
     await axios.post(appConfig.SHORTENER_API_URL, { code, url: originalUrl });
     const baseUrl = appConfig.SHORTENER_BASE_URL.replace(/\/$/, '');
     return `${baseUrl}/${code}`;
   } catch {
-    // If external fails, use internal
-    saveLocalRedirect(code, originalUrl);
-    const appUrl = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
-    return `${appUrl}/${code}`;
+    // If external fails, do NOT use local redirects which vanish on serverless!
+    // Return original URL as fallback.
+    return originalUrl;
   }
 };
 
@@ -276,9 +261,9 @@ app.post('/api/upload', (req, res, next) => {
           }
 
           // Bypass Google Drive Android App Interception & Account Chooser UI
-          // 1. We try to use Google's hidden lh3 proxy for direct media access first
-          // 2. If it's a video or we want to guarantee streaming, we proxy it through our own server
-          const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+          // Using standard Netlify/Vercel ENV vars to find real domain
+          const assumedUrl = process.env.URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL || process.env.URL?.replace('https://', '')}` : `http://localhost:${PORT}`;
+          const appUrl = process.env.APP_URL || assumedUrl;
           const proxyUrl = `${appUrl.replace(/\/$/, '')}/api/drive/stream/${res.data.id}`;
           
           const myUrl = await shorten(proxyUrl);
@@ -399,24 +384,7 @@ app.post('/api/shorten', async (req, res) => {
   }
 });
 
-// Internal Short Code Handler
-app.get('/:code', (req, res, next) => {
-  const code = req.params.code;
-  if (localRedirects[code]) {
-    const targetUrl = localRedirects[code];
-    // Masking check: If it's internal drive proxy, serve viewer instead of redirect
-    if (targetUrl.includes('/api/drive/stream/')) {
-       // Rewrite internal URL to the stream handler without changing browser URL
-       const fileId = targetUrl.split('/').pop()?.split('?')[0];
-       if (fileId) {
-          req.url = `/api/drive/stream/${fileId}`;
-          return app._router.handle(req, res);
-       }
-    }
-    return res.redirect(targetUrl);
-  }
-  next();
-});
+
 
 // Rich HTML Media Player / Streaming entry route
 app.get('/api/drive/stream/:id', async (req, res) => {
