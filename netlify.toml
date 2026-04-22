@@ -5,15 +5,15 @@
 [functions]
   node_bundler = "esbuild"
   directory = "netlify/functions"
-  included_files = ["dist/**", "config.json"]
+  included_files = ["config.json"]
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/api/:splat"
+  to = "/.netlify/functions/api"
   status = 200
   force = true
 
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/index.html"
   status = 200
