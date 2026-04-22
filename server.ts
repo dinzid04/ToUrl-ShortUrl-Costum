@@ -521,7 +521,7 @@ async function startServer() {
   }
 
   // Only listen if not imported as a module (e.g. Vercel Serverless)
-  if (import.meta.url === url.pathToFileURL(process.argv[1]).href) {
+  if (process.argv[1] && import.meta.url === url.pathToFileURL(process.argv[1]).href) {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });

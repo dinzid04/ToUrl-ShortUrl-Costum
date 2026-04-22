@@ -3,7 +3,7 @@
   publish = "dist"
 
 [functions]
-  node_bundler = "esbuild"
+  node_bundler = "nft"
   directory = "netlify/functions"
   included_files = ["config.json"]
 
