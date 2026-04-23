@@ -62,7 +62,7 @@ const shorten = async (originalUrl: string) => {
   }
 };
 
-app.post('/api/upload', (req, res, next) => {
+app.post(['/api/upload', '/upload'], (req, res, next) => {
   upload.any()(req, res, (err) => {
     if (err) {
       return res.status(400).json({ error: `Upload error: ${err.message}` });
@@ -357,7 +357,7 @@ app.post('/api/upload', (req, res, next) => {
   }
 });
 
-app.post('/api/shorten', async (req, res) => {
+app.post(['/api/shorten', '/shorten'], async (req, res) => {
   try {
     const { url, customCode } = req.body;
     
@@ -387,7 +387,7 @@ app.post('/api/shorten', async (req, res) => {
 
 
 // Rich HTML Media Player / Streaming entry route
-app.get('/api/drive/stream/:id', async (req, res) => {
+app.get(['/api/drive/stream/:id', '/drive/stream/:id'], async (req, res) => {
   try {
     const fileId = req.params.id;
     const accept = req.headers.accept || '';
@@ -455,7 +455,7 @@ app.get('/api/drive/stream/:id', async (req, res) => {
 });
 
 // Raw byte stream endpoint (for <video src> or <img src>)
-app.get('/api/drive/raw/:id', async (req, res) => {
+app.get(['/api/drive/raw/:id', '/drive/raw/:id'], async (req, res) => {
   try {
     const fileId = req.params.id;
     const isDownload = req.query.download === '1';
